@@ -1,4 +1,5 @@
 
+
 export interface Track {
   id: string;
   title: string;
@@ -43,10 +44,11 @@ declare global {
     chrome: any;
   }
   
-  // Augment NodeJS ProcessEnv to include API_KEY
+  // Augment NodeJS ProcessEnv to include API_KEY to work with existing global process definition
   namespace NodeJS {
     interface ProcessEnv {
       API_KEY: string;
+      [key: string]: any;
     }
   }
 }
