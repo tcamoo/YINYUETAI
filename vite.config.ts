@@ -1,3 +1,4 @@
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -9,6 +10,7 @@ export default defineConfig({
     sourcemap: false,
   },
   define: {
-    'process.env': {} // Fallback for some libs
+    // Correctly inject the API_KEY from the build environment
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
   }
 });
