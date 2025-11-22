@@ -1,0 +1,27 @@
+{
+  "name": "yinyuetai-mvt",
+  "main": "cf-worker.js",
+  "compatibility_date": "2024-11-22",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "DB",
+      "id": "REPLACE_WITH_YOUR_KV_ID"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "REPLACE_WITH_YOUR_BUCKET_NAME"
+    }
+  ],
+  "vars": {
+    "R2_ACCOUNT_ID": "REPLACE_WITH_YOUR_ACCOUNT_ID",
+    "R2_PUBLIC_DOMAIN": "REPLACE_WITH_YOUR_PUBLIC_DOMAIN",
+    "R2_ACCESS_KEY_ID": "REPLACE_WITH_YOUR_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY": "REPLACE_WITH_YOUR_SECRET_KEY"
+  }
+}
