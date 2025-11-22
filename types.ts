@@ -42,4 +42,11 @@ declare global {
     cast: any;
     chrome: any;
   }
+  
+  // Augment NodeJS namespace to include API_KEY in ProcessEnv
+  namespace NodeJS {
+    interface ProcessEnv {
+      API_KEY?: string;
+    }
+  }
 }
