@@ -1,17 +1,9 @@
 /**
  * Cloudflare Worker for YinYueTai MVT
- * 
- * 部署说明 (Deployment Instructions):
- * 1. 在 Cloudflare Dashboard 创建一个 Worker。
- * 2. 绑定 R2 Bucket: 变量名设为 "BUCKET"。
- * 3. (可选) 绑定 KV Namespace: 变量名设为 "DB" (用于保存媒体库列表)。
- * 4. 将此代码粘贴到 Worker 中并部署。
- * 5. 将部署后的 Worker URL 填入前端的设置中。
  */
 
 import { AwsClient } from 'aws4fetch';
 
-// 定义 CORS 头，允许前端跨域访问
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -27,23 +19,25 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // 1. 获取上传凭证 (Presigned URL for R2)
-    // POST /api/authorize-upload
+    // --- API ROUTES ---
+
+    // 1. Authorize Upload (Presigned URL for R2)
     if (path === '/api/authorize-upload' && request.method === 'POST') {
       try {
         const { filename, fileType } = await request.json();
         const key = `${Date.now()}-${filename}`;
         
-        // 初始化 AWS Client (R2 兼容 S3 API)
+        if (!env.R2_ACCESS_KEY_ID || !env.R2_SECRET_ACCESS_KEY) {
+            throw new Error("R2 Credentials not configured in Wrangler vars.");
+        }
+
         const r2 = new AwsClient({
-          accessKeyId: env.R2_ACCESS_KEY_ID,     // 在 Worker 环境变量中设置
-          secretAccessKey: env.R2_SECRET_ACCESS_KEY, // 在 Worker 环境变量中设置
+          accessKeyId: env.R2_ACCESS_KEY_ID,
+          secretAccessKey: env.R2_SECRET_ACCESS_KEY,
           service: 's3',
           region: 'auto',
         });
 
-        // 生成预签名 URL (有效期 1 小时)
-        // 注意: aws4fetch 生成 presigned url 需要手动构建 Request 并签名
         const signedUrl = await r2.sign(
           new Request(`https://${env.R2_BUCKET_NAME}.${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`, {
             method: 'PUT',
@@ -55,7 +49,7 @@ export default {
         return new Response(
           JSON.stringify({
             uploadUrl: signedUrl.url,
-            publicUrl: `${env.R2_PUBLIC_DOMAIN}/${key}`, // 你的 R2 公开访问域名
+            publicUrl: `${env.R2_PUBLIC_DOMAIN}/${key}`,
             key: key
           }), 
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -65,18 +59,16 @@ export default {
       }
     }
 
-    // 2. 获取媒体库数据 (Get Tracks)
-    // GET /api/tracks
+    // 2. Get Tracks (KV)
     if (path === '/api/tracks' && request.method === 'GET') {
-      if (!env.DB) return new Response('[]', { headers: corsHeaders }); // 如果没绑定 KV
+      if (!env.DB) return new Response('[]', { headers: corsHeaders });
       const data = await env.DB.get('tracks');
       return new Response(data || '[]', { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // 3. 保存媒体库数据 (Save Tracks)
-    // POST /api/tracks
+    // 3. Save Tracks (KV)
     if (path === '/api/tracks' && request.method === 'POST') {
       if (!env.DB) return new Response('KV Not Configured', { status: 503, headers: corsHeaders });
       const tracks = await request.json();
@@ -86,6 +78,26 @@ export default {
       });
     }
 
-    return new Response('Not Found', { status: 404, headers: corsHeaders });
+    // --- SPA FALLBACK ROUTING ---
+    // If the request is not an API call, try to serve static assets.
+    // If static asset is not found (e.g. user visits /music directly), serve index.html.
+    
+    try {
+      // 1. Try to serve the asset directly (e.g. /assets/main.js)
+      const assetResponse = await env.ASSETS.fetch(request);
+      if (assetResponse.status !== 404) {
+        return assetResponse;
+      }
+      
+      // 2. If 404 and it's a page navigation (not a file request), serve index.html
+      if (!path.includes('.')) {
+         const indexUrl = new URL('/index.html', request.url);
+         return await env.ASSETS.fetch(new Request(indexUrl, request));
+      }
+      
+      return assetResponse; // Return the original 404 for missing files
+    } catch (e) {
+      return new Response('Internal Error', { status: 500 });
+    }
   },
 };
