@@ -1,0 +1,7 @@
+{
+  "name": "音悦台 (YinYueTai) | MV Deck",
+  "description": "A next-gen MVT music video platform featuring high-fidelity playback, AI VJ curation, and cyber-brutalist aesthetics.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
